@@ -17,13 +17,16 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## Quét, dọn và khôi phục
+## Cách dùng
 
-1. **Kết quả quét** hiện dung lượng, đường dẫn và trạng thái từng mục. SmartCleanAI tra Registry và kiểm tra tệp thực thi hiện tại trước khi liệt kê bản cũ CapCut, Zalo và Postman. Danh sách còn có cache Chrome và Edge, gói tải về và báo cáo lỗi VS Code, một số cache CapCut, bộ cập nhật GoLogin và Antigravity.
-2. Thoát ứng dụng đang sử dụng mục muốn dọn, chọn **Quét lại**, tích các mục cần chuyển rồi chọn **Chuyển sang ổ D**. Thư mục `quarantine` trong dự án giữ bản sao đã kiểm tra. Dung lượng trong bảng là tổng kích thước tệp, có thể khác lượng trống thực tế.
-3. Trong tab **Khôi phục**, chọn một mục để đưa về vị trí gốc. Nếu ứng dụng đã tạo lại thư mục gốc, SmartCleanAI báo trùng để bạn có thể kiểm tra hai bản. Bản sao trên D vẫn được giữ sau khi khôi phục. Có thể mở kho từ giao diện và tự xóa một thư mục hồ sơ khi chắc chắn không còn cần nó.
+1. **Dọn dẹp**: chọn ổ đĩa rồi bấm **✨ Quét ổ … bằng AI**. App quét trên máy, sau đó AI xem danh sách và chọn sẵn các mục nên dọn. Cột **AI** hiện mức rủi ro; rê chuột hoặc bấm vào dòng để xem lý do.
+2. Ô **Hỏi AI** nhận câu hỏi hoặc mục tiêu, ví dụ `dọn 5 GB`; AI chọn lại các mục theo mục tiêu đó. Bấm vào dòng (hoặc phím Space) để tự bật/tắt mục.
+3. Bấm **Dọn N mục**. Hộp xác nhận ghi rõ từng mục đi đâu:
+   - Mục ứng dụng trên ổ C (bản cũ CapCut/Zalo/Postman, cache Chrome/Edge/VS Code/CapCut, bộ cài sót) được sao chép sang kho trên ổ D, kiểm tra từng tệp rồi mới gỡ khỏi C.
+   - Thư mục dự án lập trình (`node_modules`, `.next`, `.nuxt`, `.turbo`, `.parcel-cache`, `.angular`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`) trên mọi ổ được chuyển vào Thùng rác. App chỉ nhận thư mục nằm trong dự án thật (có `package.json` kèm lock file hoặc `.git`) và bỏ qua thư mục hệ thống, `AppData`, môi trường ảo. Dọn sạch Thùng rác để lấy lại dung lượng.
+4. **Khôi phục** đưa mục trong kho về chỗ cũ (chọn được nhiều mục). Thư mục dự án thì khôi phục từ Thùng rác.
 
-Nếu một lần dọn bị gián đoạn, mục có trạng thái **Có thể khôi phục** có bản sao đã kiểm tra trên D. Mục **Bản sao chưa hoàn tất** cần kiểm tra dữ liệu gốc trước khi xử lý bản sao dở. Nếu app báo thư mục `.smartcleanai-…` còn trên C, có thể xem đường dẫn trong **Chi tiết**.
+Nếu AI chưa sẵn sàng, app dùng gợi ý offline theo quy tắc trên máy (ghi "Offline" ở khung AI).
 
 Quét chỉ đọc từ PowerShell:
 
@@ -31,18 +34,12 @@ Quét chỉ đọc từ PowerShell:
 .\.venv\Scripts\python.exe app.py --scan
 ```
 
-## Rà soát bằng Codex
+## Cài đặt AI
 
-Trong tab **Rà soát Codex**, chọn **Xem dữ liệu gửi** để xem mẫu đường dẫn và số liệu tổng hợp theo nhóm. Chọn **Kiểm tra bằng Codex** để nhận nhận xét và đề xuất cho từng nhóm quy tắc hiện tại, cũng như quy trình dọn cache npm, pip, pnpm, NuGet và thu gọn Ubuntu WSL đã dùng trước đây. Các quy trình lịch sử này chỉ xuất hiện trong báo cáo.
+Mục **Cài đặt** chọn một trong ba nguồn AI, giống Editor-AI-App:
 
-Tính năng này cần kết nối mạng và Codex CLI đã đăng nhập bằng ChatGPT. Có thể kiểm tra bằng `codex login status` và đăng nhập bằng `codex login`. App dùng phiên CLI riêng, ở chế độ chỉ đọc với công cụ shell tắt. Dữ liệu gửi gồm mẫu quy tắc và số liệu tổng hợp, không kèm đường dẫn thật, tên tệp người dùng hoặc nội dung tệp. Kết quả chỉ hiển thị trong báo cáo. Việc dọn vẫn cần bạn chọn từng mục và xác nhận trong app.
+- **Codex CLI**: cần `npm i -g @openai/codex` và `codex login`. Chạy ở chế độ chỉ đọc, trong thư mục tạm trống.
+- **Antigravity CLI (agy)**: cần cài `agy` và chạy `agy` một lần để đăng nhập. App dừng phiên nếu agent định dùng công cụ không chỉ đọc.
+- **API (Base URL + API key)**: API kiểu OpenAI, nhập Base URL (thường kết thúc bằng `/v1`), API key và model. **Tải danh sách** đọc model từ `/models`.
 
-[Tài liệu OpenAI về rà soát có cấu trúc qua Codex CLI](https://developers.openai.com/cookbook/examples/codex/build_iterative_repair_loops_with_codex)
-
-## Trợ lý AI
-
-Tab **Trợ lý AI** dùng cùng kết nối Codex CLI để trả lời câu hỏi và lập kế hoạch từ kết quả quét. Có thể hỏi nên dọn gì trước hoặc yêu cầu mục tiêu như **2 GiB**. Bảng bên dưới hiển thị mục đề xuất, dung lượng đo trên máy, lý do và ứng dụng cần thoát.
-
-**Chỉ tích mục sẵn sàng trong kế hoạch** thay lựa chọn hiện tại ở tab quét bằng các mục sẵn sàng do AI đề xuất. Nút này chỉ đánh dấu các mục để bạn xem lại trước khi chuyển. App bỏ kế hoạch khi quét lại để tránh dùng số liệu cũ.
-
-**Xem dữ liệu gửi** hiển thị câu hỏi, tối đa ba lượt gần nhất, mẫu quy tắc và số liệu gắn với mã mục. App tự loại đường dẫn thật và tên tệp khỏi dữ liệu quét gửi đi. Câu hỏi được gửi nguyên văn. Lịch sử của tab được giữ trong bộ nhớ của phiên đang mở.
+**Kiểm tra kết nối** không tốn lượt gọi model. Cài đặt lưu ở `%APPDATA%\SmartCleanAI\settings.json` (API key lưu dạng văn bản trên máy). **Dữ liệu gửi** cho xem chính xác những gì gửi cho AI: loại mục, dung lượng, số ngày dự án không đụng tới, không có đường dẫn hay tên tệp thật.

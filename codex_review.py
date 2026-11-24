@@ -1,21 +1,17 @@
-"""Send an anonymized cleanup policy to an authenticated Codex CLI."""
+"""Send an anonymized cleanup policy to the configured AI provider."""
 
 from __future__ import annotations
 
 import json
-import os
-import platform
-import subprocess
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
+from ai_provider import AIError, request_ai
 from cleaner import Candidate, build_rules
 
 
-class ReviewError(Exception):
-    pass
+ReviewError = AIError
 
 
 # Public templates describe the built-in rules. On-disk paths never enter the prompt.
@@ -111,28 +107,6 @@ def policy_snapshot(items: list[Candidate]) -> dict:
     return {"safeguards": SAFEGUARDS, "active_rules": list(groups.values()), "prior_methods": HISTORY}
 
 
-def _native_cli() -> Path:
-    path_entries = [
-        Path(entry.strip('"')) for entry in os.get_exec_path() if entry and Path(entry.strip('"')).is_absolute()
-    ]
-    architecture = "arm64" if platform.machine().casefold() in {"arm64", "aarch64"} else "x64"
-    target = "aarch64" if architecture == "arm64" else "x86_64"
-    appdata = os.environ.get("APPDATA")
-    if appdata:
-        path_entries.append(Path(appdata) / "npm")
-    for directory in path_entries:
-        native = directory / "codex.exe"
-        if native.is_file():
-            return native
-        npm_scope = directory / "node_modules" / "@openai"
-        package_name = f"codex-win32-{architecture}"
-        for scope in (npm_scope / "codex" / "node_modules" / "@openai", npm_scope):
-            native = scope / package_name / "vendor" / f"{target}-pc-windows-msvc" / "bin" / "codex.exe"
-            if native.is_file():
-                return native
-    raise ReviewError("Không tìm thấy Codex CLI. Cài Codex CLI và đăng nhập bằng lệnh codex login.")
-
-
 def _schema(rule_ids: list[str]) -> dict:
     return {
         "type": "object",
@@ -159,47 +133,7 @@ def _schema(rule_ids: list[str]) -> dict:
 
 
 def request_codex(prompt: str, output_schema: dict) -> dict:
-    cli = _native_cli()
-    with TemporaryDirectory(prefix="smartcleanai-codex-") as temporary:
-        work = Path(temporary)
-        schema, answer = work / "schema.json", work / "answer.json"
-        schema.write_text(json.dumps(output_schema), encoding="utf-8")
-        command = [
-            str(cli), "--ask-for-approval", "never", "exec",
-            "--sandbox", "read-only", "--skip-git-repo-check",
-            "--ephemeral", "--ignore-user-config", "--color", "never",
-            "-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0",
-            "--output-schema", str(schema), "--output-last-message", str(answer),
-        ]
-        for feature in ("shell_tool", "shell_snapshot", "apps", "hooks", "remote_plugin", "multi_agent",
-                        "memories", "skill_search", "skill_mcp_dependency_install"):
-            command.extend(("--disable", feature))
-        env = os.environ.copy()
-        for key in ("OPENAI_BASE_URL", "OPENAI_API_KEY", "CODEX_API_KEY"):
-            env.pop(key, None)
-        try:
-            run = subprocess.run(
-                [*command, "-"], input=prompt, cwd=work, env=env, capture_output=True,
-                encoding="utf-8", errors="replace", timeout=150, creationflags=subprocess.CREATE_NO_WINDOW,
-            )
-        except subprocess.TimeoutExpired as error:
-            raise ReviewError("Codex chưa trả kết quả sau 150 giây. Hãy thử lại.") from error
-        if run.returncode or not answer.is_file():
-            output = run.stderr.casefold()
-            if any(marker in output for marker in ("401", "unauthorized", "not logged in", "login required")):
-                raise ReviewError("Codex CLI cần đăng nhập lại bằng codex login.")
-            if any(marker in output for marker in ("429", "rate limit", "usage limit")):
-                raise ReviewError("Codex đang chạm giới hạn sử dụng. Hãy thử lại sau.")
-            if any(marker in output for marker in ("connection", "stream disconnected", "timeout", "network")):
-                raise ReviewError("Codex CLI chưa kết nối được. Kiểm tra mạng và thử lại.")
-            raise ReviewError(f"Codex CLI không trả được báo cáo (mã {run.returncode}). Kiểm tra codex login status và phiên bản CLI.")
-        try:
-            data = json.loads(answer.read_text(encoding="utf-8"))
-            if not isinstance(data, dict):
-                raise ValueError("Expected a JSON object")
-            return data
-        except (OSError, ValueError) as error:
-            raise ReviewError("Codex trả dữ liệu sai định dạng. Hãy thử lại.") from error
+    return request_ai(prompt, output_schema)
 
 
 def review_rules(snapshot: dict) -> Review:

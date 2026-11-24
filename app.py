@@ -40,7 +40,7 @@ def main():
     window = Window(vault, smoke=args.smoke)
     if not args.smoke:
         window.show()
-    QTimer.singleShot(0, window.refresh)
+    QTimer.singleShot(0, window.start)
     return app.exec()
 
 
